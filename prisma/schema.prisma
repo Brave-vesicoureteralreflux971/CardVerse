@@ -1,0 +1,350 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProductType {
+  CARD
+  SUBSCRIPTION
+  CUSTOM
+}
+
+enum DeliveryType {
+  AUTO
+  MANUAL
+}
+
+enum CardStatus {
+  UNUSED
+  LOCKED
+  SOLD
+  INVALID
+}
+
+enum CouponDiscountType {
+  FIXED
+  PERCENT
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  DELIVERED
+  FAILED
+  CLOSED
+  REFUNDED
+}
+
+enum PaymentRecordStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum MailSendStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model Admin {
+  id           BigInt    @id @default(autoincrement())
+  username     String    @unique @db.VarChar(64)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  nickname     String?   @db.VarChar(64)
+  email        String?   @db.VarChar(128)
+  status       Boolean   @default(true)
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  operationLogs OperationLog[]
+
+  @@map("admins")
+}
+
+model ProductCategory {
+  id        BigInt    @id @default(autoincrement())
+  name      String    @db.VarChar(100)
+  sort      Int       @default(0)
+  status    Boolean   @default(true)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  products Product[]
+
+  @@map("product_categories")
+}
+
+model Product {
+  id             BigInt          @id @default(autoincrement())
+  categoryId     BigInt          @map("category_id")
+  name           String          @db.VarChar(150)
+  slug           String          @unique @db.VarChar(150)
+  type           ProductType
+  deliveryType   DeliveryType    @map("delivery_type")
+  coverImage     String?         @map("cover_image") @db.VarChar(255)
+  description    String?         @db.VarChar(500)
+  apiHook        String?         @map("api_hook") @db.VarChar(500)
+  content        String?         @db.Text
+  price          Decimal         @db.Decimal(10, 2)
+  wholesalePrice Decimal?        @map("wholesale_price") @db.Decimal(10, 2)
+  minQuantity    Int             @default(1) @map("min_quantity")
+  maxQuantity    Int             @default(1) @map("max_quantity")
+  manualStock    Int?            @map("manual_stock")
+  status         Boolean         @default(true)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  category       ProductCategory @relation(fields: [categoryId], references: [id])
+  cardBatches    CardBatch[]
+  cards          Card[]
+  couponProducts CouponProduct[]
+  orders         Order[]
+
+  @@index([categoryId], map: "idx_products_category_id")
+  @@map("products")
+}
+
+model CardBatch {
+  id         BigInt    @id @default(autoincrement())
+  productId  BigInt    @map("product_id")
+  batchName  String    @map("batch_name") @db.VarChar(100)
+  totalCount Int       @map("total_count")
+  remark     String?   @db.VarChar(255)
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  product Product @relation(fields: [productId], references: [id])
+  cards   Card[]
+
+  @@index([productId], map: "idx_card_batches_product_id")
+  @@map("card_batches")
+}
+
+model Card {
+  id          BigInt      @id @default(autoincrement())
+  batchId     BigInt      @map("batch_id")
+  productId   BigInt      @map("product_id")
+  cardSecret  String      @map("card_secret") @db.Text
+  status      CardStatus  @default(UNUSED)
+  soldOrderId BigInt?     @map("sold_order_id")
+  soldAt      DateTime?   @map("sold_at")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  batch       CardBatch    @relation(fields: [batchId], references: [id])
+  product     Product      @relation(fields: [productId], references: [id])
+  soldOrder   Order?       @relation(fields: [soldOrderId], references: [id])
+  orderCards  OrderCard[]
+
+  @@index([productId], map: "idx_cards_product_id")
+  @@index([status], map: "idx_cards_status")
+  @@index([soldOrderId], map: "idx_cards_sold_order_id")
+  @@map("cards")
+}
+
+model Coupon {
+  id             BigInt             @id @default(autoincrement())
+  code           String             @unique @db.VarChar(64)
+  discountType   CouponDiscountType @map("discount_type")
+  discountValue  Decimal            @map("discount_value") @db.Decimal(10, 2)
+  minAmount      Decimal?           @map("min_amount") @db.Decimal(10, 2)
+  totalLimit     Int?               @map("total_limit")
+  usedCount      Int                @default(0) @map("used_count")
+  startAt        DateTime?          @map("start_at")
+  endAt          DateTime?          @map("end_at")
+  status         Boolean            @default(true)
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  couponProducts CouponProduct[]
+
+  @@map("coupons")
+}
+
+model CouponProduct {
+  id        BigInt   @id @default(autoincrement())
+  couponId  BigInt   @map("coupon_id")
+  productId BigInt   @map("product_id")
+
+  coupon  Coupon  @relation(fields: [couponId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([couponId, productId], map: "uk_coupon_products_coupon_product")
+  @@index([productId], map: "idx_coupon_products_product_id")
+  @@map("coupon_products")
+}
+
+model Order {
+  id                       BigInt      @id @default(autoincrement())
+  orderNo                  String      @unique @map("order_no") @db.VarChar(64)
+  orderName                String      @map("order_name") @db.VarChar(150)
+  orderType                String      @map("order_type") @db.VarChar(32)
+  email                    String      @db.VarChar(128)
+  productId                BigInt      @map("product_id")
+  quantity                 Int
+  totalPrice               Decimal     @map("total_price") @db.Decimal(10, 2)
+  couponCode               String?     @map("coupon_code") @db.VarChar(64)
+  couponDiscountAmount     Decimal?    @map("coupon_discount_amount") @db.Decimal(10, 2)
+  wholesaleDiscountAmount  Decimal?    @map("wholesale_discount_amount") @db.Decimal(10, 2)
+  payPrice                 Decimal     @map("pay_price") @db.Decimal(10, 2)
+  paymentChannelCode       String?     @map("payment_channel_code") @db.VarChar(64)
+  buyerIp                  String?     @map("buyer_ip") @db.VarChar(64)
+  queryPasswordHash        String      @map("query_password_hash") @db.VarChar(255)
+  queryPasswordPlain       String?     @map("query_password_plain") @db.VarChar(64)
+  thirdPartyOrderNo        String?     @map("third_party_order_no") @db.VarChar(128)
+  manualDeliveryContent    String?     @map("manual_delivery_content") @db.Text
+  status                   OrderStatus @default(PENDING)
+  paidAt                   DateTime?   @map("paid_at")
+  deliveredAt              DateTime?   @map("delivered_at")
+  closedAt                 DateTime?   @map("closed_at")
+  createdAt                DateTime    @default(now()) @map("created_at")
+  updatedAt                DateTime    @updatedAt @map("updated_at")
+
+  product        Product         @relation(fields: [productId], references: [id])
+  cards           Card[]
+  orderCards      OrderCard[]
+  deliveryRecords OrderDeliveryRecord[]
+  paymentRecords  PaymentRecord[]
+  mailLogs        MailLog[]
+
+  @@index([email], map: "idx_orders_email")
+  @@index([status], map: "idx_orders_status")
+  @@index([productId], map: "idx_orders_product_id")
+  @@index([createdAt], map: "idx_orders_created_at")
+  @@map("orders")
+}
+
+model OrderDeliveryRecord {
+  id           BigInt   @id @default(autoincrement())
+  orderId      BigInt   @map("order_id")
+  deliveryType String   @map("delivery_type") @db.VarChar(32)
+  content      String   @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([orderId], map: "idx_order_delivery_records_order_id")
+  @@map("order_delivery_records")
+}
+
+model OrderCard {
+  id           BigInt   @id @default(autoincrement())
+  orderId      BigInt   @map("order_id")
+  cardId       BigInt   @map("card_id")
+  cardSnapshot String   @map("card_snapshot") @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id])
+  card  Card  @relation(fields: [cardId], references: [id])
+
+  @@index([orderId], map: "idx_order_cards_order_id")
+  @@index([cardId], map: "idx_order_cards_card_id")
+  @@map("order_cards")
+}
+
+model PaymentChannel {
+  id         BigInt    @id @default(autoincrement())
+  name       String    @db.VarChar(100)
+  code       String    @unique @db.VarChar(64)
+  driver     String    @db.VarChar(64)
+  configJson Json?     @map("config_json")
+  notifyUrl  String?   @map("notify_url") @db.VarChar(255)
+  returnUrl  String?   @map("return_url") @db.VarChar(255)
+  sort       Int       @default(0)
+  status     Boolean   @default(true)
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  paymentRecords PaymentRecord[]
+
+  @@map("payment_channels")
+}
+
+model PaymentRecord {
+  id               BigInt              @id @default(autoincrement())
+  orderId          BigInt              @map("order_id")
+  paymentChannelId BigInt              @map("payment_channel_id")
+  outTradeNo       String              @map("out_trade_no") @db.VarChar(128)
+  thirdTradeNo     String?             @map("third_trade_no") @db.VarChar(128)
+  amount           Decimal             @db.Decimal(10, 2)
+  status           PaymentRecordStatus @default(PENDING)
+  rawCallback      Json?               @map("raw_callback")
+  paidAt           DateTime?           @map("paid_at")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+
+  order          Order          @relation(fields: [orderId], references: [id])
+  paymentChannel PaymentChannel @relation(fields: [paymentChannelId], references: [id])
+
+  @@index([orderId], map: "idx_payment_records_order_id")
+  @@index([paymentChannelId], map: "idx_payment_records_channel_id")
+  @@map("payment_records")
+}
+
+model MailTemplate {
+  id        BigInt    @id @default(autoincrement())
+  name      String    @db.VarChar(100)
+  eventCode String    @map("event_code") @db.VarChar(64)
+  subject   String    @db.VarChar(255)
+  content   String    @db.Text
+  status    Boolean   @default(true)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  mailLogs MailLog[]
+
+  @@map("mail_templates")
+}
+
+model MailLog {
+  id           BigInt         @id @default(autoincrement())
+  orderId      BigInt         @map("order_id")
+  templateId   BigInt?        @map("template_id")
+  toEmail      String         @map("to_email") @db.VarChar(128)
+  eventCode    String         @map("event_code") @db.VarChar(64)
+  sendStatus   MailSendStatus @map("send_status") @default(PENDING)
+  errorMessage String?        @map("error_message") @db.VarChar(500)
+  sentAt       DateTime?      @map("sent_at")
+  createdAt    DateTime       @default(now()) @map("created_at")
+
+  order    Order         @relation(fields: [orderId], references: [id])
+  template MailTemplate? @relation(fields: [templateId], references: [id])
+
+  @@index([orderId], map: "idx_mail_logs_order_id")
+  @@index([templateId], map: "idx_mail_logs_template_id")
+  @@map("mail_logs")
+}
+
+model SystemConfig {
+  id          BigInt   @id @default(autoincrement())
+  configKey   String   @unique @map("config_key") @db.VarChar(100)
+  configValue String?  @map("config_value") @db.Text
+  groupName   String?  @map("group_name") @db.VarChar(64)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("system_configs")
+}
+
+model OperationLog {
+  id        BigInt   @id @default(autoincrement())
+  adminId   BigInt?  @map("admin_id")
+  module    String   @db.VarChar(64)
+  action    String   @db.VarChar(64)
+  targetId  BigInt?  @map("target_id")
+  detail    Json?
+  ip        String?  @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  admin Admin? @relation(fields: [adminId], references: [id])
+
+  @@index([adminId], map: "idx_operation_logs_admin_id")
+  @@map("operation_logs")
+}
+

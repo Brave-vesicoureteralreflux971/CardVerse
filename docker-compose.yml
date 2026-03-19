@@ -1,0 +1,37 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/app.Dockerfile
+    image: cardverse:latest
+    container_name: cardverse-app
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      SITE_ADDR: ${SITE_ADDR:-http://localhost}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DEFAULT_ADMIN_USERNAME: ${DEFAULT_ADMIN_USERNAME:-admin}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-JenkinWoo123!}
+      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@frp.gs}
+      JWT_SECRET: ${JWT_SECRET:-change-this-jwt-secret}
+      RUN_DB_PUSH: ${RUN_DB_PUSH:-true}
+      RUN_DB_SEED: ${RUN_DB_SEED:-true}
+    ports:
+      - "${APP_PORT:-80}:80"
+      - "${APP_TLS_PORT:-443}:443"
+    volumes:
+      - uploads_data:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  uploads_data:
