@@ -385,6 +385,7 @@ async function saveProduct() {
       name: String(productForm.name).trim(),
       categoryId: Number(productForm.categoryId),
       slug: String(productForm.slug).trim(),
+      coverImage: String(productForm.coverImage ?? '').trim() || undefined,
       type: productForm.type || 'CARD',
       deliveryType: productForm.deliveryType || 'AUTO',
       description: String(productForm.description ?? '').trim(),

@@ -188,9 +188,6 @@ cd ../storefront-web && npm run build
 常用变量：
 
 ```env
-SITE_ADDR=http://your-server-ip
-APP_PORT=80
-APP_TLS_PORT=443
 DB_HOST=your-mysql-host
 DB_PORT=3306
 DB_USER=cardverse
@@ -206,15 +203,12 @@ RUN_DB_SEED=true
 
 变量说明：
 
-- `SITE_ADDR`：Caddy 对外站点地址。IP 场景通常写 `http://服务器IP`，域名场景可写域名。
 - `APP_PORT`：宿主机映射到容器 `80` 的端口。
-- `APP_TLS_PORT`：宿主机映射到容器 `443` 的端口。
 - `RUN_DB_PUSH`：容器启动时是否自动执行 `prisma db push`。
 - `RUN_DB_SEED`：容器启动时是否自动执行 `prisma seed`。
 
 如果你的支付回调或 webhook 依赖公网访问，请确认：
 
-- `SITE_ADDR` 或系统中的 `SITE_URL` 配置为真实可访问地址
 - 若商品配置了 `apiHook`，容器网络可以访问目标 webhook 地址
 
 ### 2. 启动容器
@@ -266,8 +260,6 @@ cd storefront-web && npm run build
 - 修改数据库账号密码和 `JWT_SECRET`
 - 修改默认管理员密码
 - 确认 MySQL 已可被应用容器访问
-- 确认 `SITE_ADDR` 与实际访问地址一致
-- 如果使用域名和 HTTPS，确认 80/443 端口可访问
 
 ## 仓库文件
 

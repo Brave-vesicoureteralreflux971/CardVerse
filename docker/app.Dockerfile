@@ -55,6 +55,6 @@ COPY docker/start-app.sh /usr/local/bin/start-app.sh
 RUN mkdir -p /app/uploads \
   && chmod +x /usr/local/bin/start-app.sh
 
-EXPOSE 80 443
+EXPOSE 80
 
 CMD ["/usr/local/bin/start-app.sh"]

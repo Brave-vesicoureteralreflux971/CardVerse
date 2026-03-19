@@ -1,6 +1,6 @@
 ﻿import { DeliveryType, ProductType } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayNotEmpty,
   IsArray,
@@ -41,6 +41,10 @@ export class CreateProductDto {
   deliveryType!: DeliveryType;
 
   @ApiPropertyOptional()
+  @Transform(({ value }) => {
+    const normalized = typeof value === 'string' ? value.trim() : value;
+    return normalized ? normalized : undefined;
+  })
   @IsOptional()
   @IsString()
   @MaxLength(255)
@@ -53,6 +57,10 @@ export class CreateProductDto {
   description?: string;
 
   @ApiPropertyOptional()
+  @Transform(({ value }) => {
+    const normalized = typeof value === 'string' ? value.trim() : value;
+    return normalized ? normalized : undefined;
+  })
   @IsOptional()
   @IsString()
   @IsUrl({

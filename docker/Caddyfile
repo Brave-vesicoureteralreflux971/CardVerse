@@ -1,4 +1,4 @@
-{$SITE_ADDR:http://localhost} {
+:80 {
   encode zstd gzip
 
   @api path /api /api/* /uploads /uploads/* /api/health

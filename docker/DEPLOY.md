@@ -1,4 +1,4 @@
-# Docker Deployment
+﻿# Docker Deployment
 
 This setup builds a single container image that contains:
 
@@ -27,9 +27,7 @@ Required database variables at container startup:
 
 Common optional variables:
 
-- `SITE_ADDR`: Caddy site address. Use `http://server-ip` for plain HTTP, or `example.com` for automatic HTTPS.
 - `APP_PORT`: host port mapped to container `80`. Default `80`.
-- `APP_TLS_PORT`: host port mapped to container `443`. Default `443`.
 - `DEFAULT_ADMIN_USERNAME`
 - `DEFAULT_ADMIN_PASSWORD`
 - `DEFAULT_ADMIN_EMAIL`
@@ -44,9 +42,6 @@ Create an env file first, or pass variables inline.
 Example `.env`:
 
 ```bash
-SITE_ADDR=http://your-server-ip
-APP_PORT=80
-APP_TLS_PORT=443
 DB_HOST=your-mysql-host
 DB_PORT=3306
 DB_USER=cardverse
@@ -71,7 +66,6 @@ Or pass variables inline from the shell.
 Bash:
 
 ```bash
-SITE_ADDR=http://your-server-ip \
 DB_HOST=your-mysql-host \
 DB_PORT=3306 \
 DB_USER=cardverse \
@@ -83,7 +77,6 @@ docker compose up -d --build
 PowerShell:
 
 ```powershell
-$env:SITE_ADDR='http://your-server-ip'
 $env:DB_HOST='your-mysql-host'
 $env:DB_PORT='3306'
 $env:DB_USER='cardverse'
@@ -106,9 +99,7 @@ Run:
 docker run -d \
   --name cardverse-app \
   -p 80:80 \
-  -p 443:443 \
   -v cardverse_uploads:/app/uploads \
-  -e SITE_ADDR=http://your-server-ip \
   -e DB_HOST=your-mysql-host \
   -e DB_PORT=3306 \
   -e DB_USER=cardverse \
